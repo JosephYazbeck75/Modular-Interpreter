@@ -9,5 +9,5 @@ public enum Type {
     LEFTPAR,
     RIGHTPAR,
     SEMICOLON,
-    END,
+    END
 } 
