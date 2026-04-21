@@ -34,13 +34,15 @@ private Token number() {
 }
 private Token identifier() {
     StringBuilder result  = new StringBuilder();
-
-    while (curr != '\0' &&  Character.isDigit(curr) || curr == '.') {
+    while (curr != '\0' &&  Character.isLetterOrDigit(curr)) {
 result.append(curr);
 advance();
 
     }
-    String word = result.toString();
+    String word = result.toString().toLowerCase();
+     if (word.isEmpty()) {
+        throw new RuntimeException("Empty identifier detected");
+    }
     
     switch(word) {
         case "add":
@@ -56,6 +58,7 @@ advance();
     }
 }
 public Token getNextToken() {
+    System.out.println("Current char: [ " + curr + " ]");
     while (curr != '\0') {
         if (Character.isWhitespace(curr)) {
             skipWhitespace();

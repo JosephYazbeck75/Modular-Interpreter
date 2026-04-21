@@ -1,6 +1,6 @@
 public class Main {
-    public static void Main(String[] args) {
-Lexer lexer = new Lexer("a = 10 ADD 5");
+    public static void main(String[] args) {
+Lexer lexer = new Lexer("a = 10 add 5;");
 
 Token token;
     
