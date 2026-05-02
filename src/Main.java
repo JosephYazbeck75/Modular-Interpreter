@@ -3,6 +3,9 @@ public class Main {
         Lexer lexer = new Lexer("a = 10 add 5; b = a min 3;");
         Parser parser = new Parser(lexer);
         ProgramNode program = parser.parseProgram();
-        System.out.println(program);
+
+        // parse program and evaluate runtime values
+        Evaluator evaluator = new Evaluator();
+        System.out.println(evaluator.evaluate(program));
     }
 }
