@@ -63,6 +63,11 @@ public class Parser {
     }
 
     private ASTNode parseStatement() {
+    if (curr.type == Type.PRINT) {
+        consume(Type.PRINT);
+        ASTNode expr = parseExpr();
+        return new PrintNode(expr);
+    }
         if (curr.type == Type.VAR) {
             String name = curr.value;
             consume(Type.VAR);

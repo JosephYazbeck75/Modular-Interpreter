@@ -30,6 +30,12 @@ public class ASTPrinter {
         } else if (node instanceof VarNode) {
             VarNode var = (VarNode) node;
             sb.append(indentation).append("Var: ").append(var.name).append("\n");
+        }
+        else if (node instanceof PrintNode){
+            PrintNode print = (PrintNode) node;
+            sb.append(indentation).append("Print\n");
+            nodeToString(print.expression, indent+ 1, sb);
+
         } else {
             sb.append(indentation).append(node.getClass().getSimpleName()).append("\n");
         }

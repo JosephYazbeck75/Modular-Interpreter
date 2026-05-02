@@ -32,6 +32,15 @@ public class Evaluator {
             double rightValue = evaluateNode(bin.right);
             return evaluateBinaryOperation(bin.op, leftValue, rightValue);
         }
+        if (node instanceof PrintNode) {
+            PrintNode print = (PrintNode) node;
+            double value = evaluateNode(print.expression);
+            String formatted = (value == Math.floor(value) && !Double.isInfinite(value))
+            ? String.valueOf((int)(double)value)
+            : String.valueOf(value);
+            System.out.println("==> "+ formatted);
+            return value;
+        }
 
         if (node instanceof AssignNode) {
             AssignNode assign = (AssignNode) node;

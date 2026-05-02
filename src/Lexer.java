@@ -5,94 +5,85 @@ public class Lexer {
     private String text;
     public int pos;
     private char curr;
+    private int line;
+    private int col;
 
     public Lexer(String text) {
         this.text = text;
         this.pos = 0;
-        this.curr = text.charAt(pos);
+        this.curr = text.isEmpty() ? '\0' : text.charAt(0);
+        this.line = 1;
+        this.col = 1;
     }
 
     private void advance() {
+        if (curr == '\n') {
+            line++;
+            col = 1;
+        } else {
+            col++;
+        }
         pos++;
-        if (pos < text.length()) {
-            curr = text.charAt(pos);
-        }
-        else {
-            curr = '\0';
-        }
+        curr = pos < text.length() ? text.charAt(pos) : '\0';
     }
 
     private void skipWhitespace() {
-        while (curr !=  '\0' &&  Character.isWhitespace(curr)) {
+        while (curr != '\0' && Character.isWhitespace(curr)) {
             advance();
         }
     }
 
     private Token number() {
+        int startCol = col;
+        int startLine = line;
         StringBuilder result = new StringBuilder();
-        while (curr != '\0' &&  Character.isDigit(curr) || curr == '.') {
+        while (curr != '\0' && (Character.isDigit(curr) || curr == '.')) {
             result.append(curr);
             advance();
         }
-        return new Token(Type.NUMBER, result.toString());
+        return new Token(Type.NUMBER, result.toString(), startLine, startCol);
     }
 
     private Token identifier() {
-        StringBuilder result  = new StringBuilder();
-        while (curr != '\0' &&  Character.isLetterOrDigit(curr)) {
+        int startCol = col;
+        int startLine = line;
+        StringBuilder result = new StringBuilder();
+        while (curr != '\0' && Character.isLetterOrDigit(curr)) {
             result.append(curr);
             advance();
         }
         String word = result.toString().toLowerCase();
-        if (word.isEmpty()) {
-            throw new RuntimeException("Empty identifier detected");
-        }
-        
-        switch(word) {
-            case "add":
-                return new Token(Type.ADD, word);
+        if (word.isEmpty()) throw new RuntimeException("Empty identifier at line " + line + ":" + col);
+
+        switch (word) {
+            case "add":   return new Token(Type.ADD,  word, startLine, startCol);
             case "min":
-                return new Token(Type.MIN, word);
-            case "mult":
-                return new Token(Type.MULT, word);
-            case "div":
-                return new Token(Type.DIV,word);
-            default:
-                return new Token(Type.VAR, word);
+            case "sub":   return new Token(Type.MIN,  word, startLine, startCol);
+            case "mult":  return new Token(Type.MULT, word, startLine, startCol);
+            case "div":   return new Token(Type.DIV,  word, startLine, startCol);
+            case "print": return new Token(Type.PRINT, word, startLine, startCol);
+            default:      return new Token(Type.VAR,  word, startLine, startCol);
         }
     }
 
     public Token getNextToken() {
         while (curr != '\0') {
-            if (Character.isWhitespace(curr)) {
-                skipWhitespace();
-                continue;
-            }
-            if (Character.isDigit(curr)) {
-                return number();
-            }
-            if (Character.isLetter(curr)) {
-                return identifier();
-            }
-            if (curr == '=') {
-                advance();
-                return new Token(Type.ASSIGN, "=");
-            }
-                    if (curr == ';') {
-                advance();
-                return new Token(Type.SEMICOLON, ";");
-            }
-            if (curr == '(') {
-                advance();
-                return new Token(Type.LEFTPAR, "(");
-            }
-            if (curr == ')') {
-                advance();
-                return new Token(Type.RIGHTPAR, ")");
-            }
-            throw new RuntimeException("Unknown character: " + curr);
+            if (Character.isWhitespace(curr)) { skipWhitespace(); continue; }
+
+            int startLine = line;
+            int startCol  = col;
+
+            if (Character.isDigit(curr))  return number();
+            if (Character.isLetter(curr)) return identifier();
+
+            if (curr == '=') { advance(); return new Token(Type.ASSIGN,    "=", startLine, startCol); }
+            if (curr == ';') { advance(); return new Token(Type.SEMICOLON, ";", startLine, startCol); }
+            if (curr == '(') { advance(); return new Token(Type.LEFTPAR,   "(", startLine, startCol); }
+            if (curr == ')') { advance(); return new Token(Type.RIGHTPAR,  ")", startLine, startCol); }
+
+            throw new RuntimeException("Unknown character '" + curr + "' at line " + line + ":" + col);
         }
-        return new Token(Type.END, null);
+        return new Token(Type.END, null, line, col);
     }
 
     public List<Token> tokenize() {

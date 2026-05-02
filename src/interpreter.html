@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Modular Interpreter</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Courier New', monospace;
+    background: #0a0f1e;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 24px 32px 20px;
+    border-bottom: 1px solid #1e293b;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  header h1 {
+    font-size: 18px;
+    font-weight: bold;
+    color: #e2e8f0;
+    letter-spacing: 0.05em;
+  }
+
+  header span {
+    font-size: 12px;
+    color: #475569;
+  }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    flex: 1;
+    gap: 0;
+  }
+
+  .left-panel {
+    border-right: 1px solid #1e293b;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    gap: 16px;
+  }
+
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    gap: 16px;
+    overflow-y: auto;
+  }
+
+  .panel-label {
+    font-size: 10px;
+    font-weight: bold;
+    color: #475569;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 220px;
+    background: #111827;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    color: #e2e8f0;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    padding: 14px 16px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  textarea:focus { border-color: #3b82f6; }
+  textarea::placeholder { color: #334155; }
+
+  .btn-row { display: flex; gap: 10px; }
+
+  button {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 9px 22px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  button:active { transform: scale(0.97); }
+
+  .btn-run {
+    background: #3b82f6;
+    color: white;
+  }
+  .btn-run:hover { background: #2563eb; }
+
+  .btn-clear {
+    background: transparent;
+    color: #64748b;
+    border: 1px solid #1e293b;
+  }
+  .btn-clear:hover { background: #1e293b; color: #94a3b8; }
+
+  .hint {
+    font-size: 11px;
+    color: #334155;
+  }
+
+  .section {
+    background: #111827;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .section-header {
+    padding: 8px 14px;
+    border-bottom: 1px solid #1e293b;
+    font-size: 10px;
+    font-weight: bold;
+    color: #475569;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .section-body { padding: 14px 16px; }
+
+  .token-flow { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .chip {
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-weight: bold;
+  }
+
+  .chip-NUMBER  { background: #1e3a5f; color: #93c5fd; }
+  .chip-VAR     { background: #2d1b69; color: #c4b5fd; }
+  .chip-OP      { background: #064e3b; color: #6ee7b7; }
+  .chip-ASSIGN  { background: #422006; color: #fcd34d; }
+  .chip-PUNCT   { background: #1e293b; color: #475569; }
+  .chip PRINT   { background: #1e3a2f; color: #86efac; }
+
+  .ast-pre {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #64748b;
+    white-space: pre;
+    overflow-x: auto;
+    line-height: 1.6;
+  }
+
+  .results-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .result-card {
+    background: #0a0f1e;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    padding: 10px 16px;
+    min-width: 80px;
+  }
+
+  .result-name {
+    font-size: 10px;
+    color: #475569;
+    margin-bottom: 4px;
+    text-transform: lowercase;
+  }
+
+  .result-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #e2e8f0;
+  }
+
+  .error-box {
+    background: #2d0a0a;
+    border: 1px solid #7f1d1d;
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+
+  .error-title {
+    font-size: 11px;
+    font-weight: bold;
+    color: #f87171;
+    margin-bottom: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .error-msg {
+    font-size: 13px;
+    color: #fca5a5;
+    line-height: 1.5;
+  }
+
+  .empty-state {
+    font-size: 13px;
+    color: #1e293b;
+    text-align: center;
+    padding: 48px 0;
+  }
+
+  .token-ref { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+
+  .ref-row { display: flex; align-items: center; gap: 12px; }
+
+  .ref-desc { font-size: 12px; color: #475569; }
+
+  .ref-desc code {
+    font-family: 'Courier New', monospace;
+    color: #64748b;
+    background: #1e293b;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+  }
+
+  @media (max-width: 700px) {
+    .workspace { grid-template-columns: 1fr; }
+    .left-panel { border-right: none; border-bottom: 1px solid #1e293b; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Modular Interpreter</h1>
+  <span>Lexer &rarr; Parser &rarr; Evaluator</span>
+</header>
+
+<div class="workspace">
+  <div class="left-panel">
+    <div>
+      <div class="panel-label">Input</div>
+      <textarea id="input" placeholder="a = 10 add 5; b = a min 3; c = b mult 2;"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn-run" onclick="runInterpreter()">&#9654; Run</button>
+      <button class="btn-clear" onclick="clearAll()">&#10005; Clear</button>
+    </div>
+    <div class="hint">Ctrl+Enter to run</div>
+
+    <div>
+      <div class="panel-label">Token Reference</div>
+      <div class="token-ref">
+        <div class="ref-row">
+          <span class="chip chip-NUMBER">NUMBER</span>
+          <span class="ref-desc">Decimal or integer &mdash; e.g. <code>10</code>, <code>3.14</code></span>
+        </div>
+        <div class="ref-row">
+          <span class="chip chip-VAR">VAR</span>
+          <span class="ref-desc">Variable name &mdash; e.g. <code>a</code>, <code>result</code></span>
+        </div>
+        <div class="ref-row">
+          <span class="chip chip-ASSIGN">ASSIGN</span>
+          <span class="ref-desc">Assignment operator &mdash; <code>=</code></span>
+        </div>
+        <div class="ref-row">
+          <span class="chip chip-OP">ADD</span>
+          <span class="ref-desc">Addition &mdash; <code>a add b</code></span>
+        </div>
+        <div class="ref-row">
+          <span class="chip chip-OP">MIN</span>
+          <span class="ref-desc">Subtraction &mdash; <code>a min b</code></span>
+        </div>
+        <div class="ref-row">
+          <span class="chip chip-OP">MULT</span>
+          <span class="ref-desc">Multiplication &mdash; <code>a mult b</code></span>
+        </div>
+        <div class="ref-row">
+          <span class="chip chip-OP">DIV</span>
+          <span class="ref-desc">Division &mdash; <code>a div b</code></span>
+        </div>
+        <div class="ref-row">
+          <span class="chip chip-PUNCT">( )</span>
+          <span class="ref-desc">Grouping &mdash; <code>(a add b) mult c</code></span>
+        </div>
+        <div class="ref-row">
+          <span class="chip chip-PUNCT">;</span>
+          <span class="ref-desc">Statement separator</span>
+        </div>
+        <div class="ref-row">
+            <span class="chip chip-PRINT">PRINT</span>
+            <span class="ref-desc">Print a value &mdash; <code>print a;</code></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel" id="output">
+    <div class="empty-state">Run a program to see output</div>
+  </div>
+</div>
+
+<script>
+const Type = {
+  NUMBER:'NUMBER', VAR:'VAR', ADD:'ADD', MIN:'MIN', MULT:'MULT', DIV:'DIV', PRINt: 'PRINT',
+  ASSIGN:'ASSIGN', LEFTPAR:'LEFTPAR', RIGHTPAR:'RIGHTPAR', SEMICOLON:'SEMICOLON', END:'END'
+};
+
+class Token {
+  constructor(type, value) { this.type = type; this.value = value; }
+}
+
+class Lexer {
+  constructor(text) { this.text = text; this.pos = 0; this.curr = text[0] || '\0'; }
+  advance() { this.pos++; this.curr = this.pos < this.text.length ? this.text[this.pos] : '\0'; }
+  skipWS() { while (this.curr !== '\0' && /\s/.test(this.curr)) this.advance(); }
+  number() {
+    let r = '';
+    while (this.curr !== '\0' && (/\d/.test(this.curr) || this.curr === '.')) { r += this.curr; this.advance(); }
+    return new Token(Type.NUMBER, r);
+  }
+  identifier() {
+    let r = '';
+    while (this.curr !== '\0' && /[a-zA-Z0-9]/.test(this.curr)) { r += this.curr; this.advance(); }
+    const w = r.toLowerCase();
+    if (!w) throw new Error('Empty identifier');
+    const kw = { add: 'ADD', min: 'MIN',sub: ' MIN', mult: 'MULT', div: 'DIV', print: 'PRINT' };
+    return new Token(kw[w] || Type.VAR, w);
+  }
+  getNextToken() {
+    while (this.curr !== '\0') {
+      if (/\s/.test(this.curr)) { this.skipWS(); continue; }
+      if (/\d/.test(this.curr)) return this.number();
+      if (/[a-zA-Z]/.test(this.curr)) return this.identifier();
+      if (this.curr === '=') { this.advance(); return new Token(Type.ASSIGN, '='); }
+      if (this.curr === ';') { this.advance(); return new Token(Type.SEMICOLON, ';'); }
+      if (this.curr === '(') { this.advance(); return new Token(Type.LEFTPAR, '('); }
+      if (this.curr === ')') { this.advance(); return new Token(Type.RIGHTPAR, ')'); }
+      throw new Error('Unknown character: ' + this.curr);
+    }
+    return new Token(Type.END, null);
+  }
+  tokenize() {
+    const tokens = []; let t;
+    do { t = this.getNextToken(); tokens.push(t); } while (t.type !== Type.END);
+    return tokens;
+  }
+}
+
+class Parser {
+  constructor(lexer) { this.lexer = lexer; this.curr = lexer.getNextToken(); }
+  eat(type) {
+    if (this.curr.type !== type) throw new Error('Expected ' + type + ' got ' + this.curr.type + '(' + this.curr.value + ')');
+    const t = this.curr; this.curr = this.lexer.getNextToken(); return t;
+  }
+  isOp(type) { return [Type.ADD,Type.MIN,Type.MULT,Type.DIV].includes(type); }
+  isReserved(type) { return [Type.ADD,Type.MIN,Type.MULT,Type.DIV].includes(type); }
+  parsePrimary() {
+    const t = this.curr;
+    if (t.type === Type.NUMBER) { this.eat(Type.NUMBER); return { kind:'number', value: parseFloat(t.value) }; }
+    if (t.type === Type.VAR)    { this.eat(Type.VAR);    return { kind:'var', name: t.value }; }
+    if (t.type === Type.LEFTPAR){ this.eat(Type.LEFTPAR); const n = this.parseExpr(); this.eat(Type.RIGHTPAR); return n; }
+    throw new Error('Unexpected token: ' + t.type + '(' + t.value + ')');
+  }
+  parseExprFromNode(left) {
+    while (this.isOp(this.curr.type)) {
+      const op = this.curr.type; this.eat(op);
+      const right = this.parsePrimary();
+      left = { kind:'binop', op, left, right };
+    }
+    return left;
+  }
+  parseExpr() { return this.parseExprFromNode(this.parsePrimary()); }
+  parseStatement() {
+    if (this.isReserved(this.curr.type))
+      throw new Error("'" + this.curr.value + "' is a system symbol");
+
+    if (this.curr.type == 'PRINT') {
+        this.eat('PRINT');
+        return {kind:'print', expr: this.parseExpr()};
+    }
+    if (this.curr.type === Type.VAR) {
+      const name = this.curr.value; this.eat(Type.VAR);
+      if (this.curr.type === Type.ASSIGN) {
+        this.eat(Type.ASSIGN);
+        return { kind:'assign', name, value: this.parseExpr() };
+      }
+      if (this.curr.type === 'PRINT') {
+        this.eat('PRINT');
+        return {kind:'print', expr:this.parseExpr()};
+      }
+      return this.parseExprFromNode({ kind:'var', name });
+    }
+    return this.parseExpr();
+  }
+  parseProgram() {
+    const stmts = [];
+    while (this.curr.type !== Type.END) {
+      stmts.push(this.parseStatement());
+      if (this.curr.type === Type.SEMICOLON) this.eat(Type.SEMICOLON);
+    }
+    return { kind:'program', statements: stmts };
+  }
+}
+
+class Evaluator {
+  constructor() { this.vars = new Map(); }
+  evaluate(program) {
+    for (const s of program.statements) this.evalNode(s);
+    return this.vars;
+  }
+  evalNode(node) {
+    if (node.kind === 'number') return node.value;
+    if (node.kind === 'var') {
+      if (!this.vars.has(node.name)) throw new Error(node.name + ' is not declared');
+      return this.vars.get(node.name);
+    }
+    if (node.kind === 'binop') {
+      const l = this.evalNode(node.left), r = this.evalNode(node.right);
+      if (node.op === Type.ADD)  return l + r;
+      if (node.op === Type.MIN)  return l - r;
+      if (node.op === Type.MULT) return l * r;
+      if (node.op === Type.DIV)  { if (r === 0) throw new Error('Cannot divide by zero'); return l / r; }
+    }
+    if (node.kind === 'assign') {
+      const v = this.evalNode(node.value);
+      this.vars.set(node.name, v);
+      return v;
+    }
+    if (node.kind == 'print') {
+        const v = this.evalNode(node.expr);
+        const out = document.getElementById('output');
+        out.innerHTML += `<div style="color:#86efac; font-size:13px; padding:4px 0;">==> $[formatVal(v)}</div>`;
+        return v;
+    }
+    throw new Error('Unknown node: ' + node.kind);
+  }
+}
+
+function astToString(node, indent) {
+  indent = indent || 0;
+  const pad = '  '.repeat(indent);
+  if (node.kind === 'program') {
+    return 'Program\n' + node.statements.map(s => astToString(s, indent+1)).join('');
+  }
+  if (node.kind === 'assign') {
+    return pad + 'Assign: ' + node.name + '\n' + astToString(node.value, indent+1);
+  }
+  if (node.kind == 'print') {
+    return pad + 'Print\n' + astToString(node.expr, ' ' + 1);
+  }
+  if (node.kind === 'binop') {
+    return pad + 'BinOp: ' + node.op + '\n' +
+      pad + '  Left:\n'  + astToString(node.left,  indent+2) +
+      pad + '  Right:\n' + astToString(node.right, indent+2);
+  }
+  if (node.kind === 'number') return pad + 'Number: ' + node.value + '\n';
+  if (node.kind === 'var')    return pad + 'Var: '    + node.name  + '\n';
+  return pad + '?\n';
+}
+
+function chipClass(type) {
+  if (type === 'NUMBER') return 'chip-NUMBER';
+  if (type === 'VAR')    return 'chip-VAR';
+  if (['ADD','MIN','MULT','DIV'].includes(type)) return 'chip-OP';
+  if (type === 'ASSIGN') return 'chip-ASSIGN';
+  if (type == 'PRINT') return 'chip-PRINT';
+  return 'chip-PUNCT';
+}
+
+function formatVal(v) {
+  return v === Math.floor(v) ? String(Math.round(v)) : parseFloat(v.toFixed(6)).toString();
+}
+
+function runInterpreter() {
+  const source = document.getElementById('input').value.trim();
+  const out = document.getElementById('output');
+  out.innerHTML = '';
+  if (!source) return;
+
+  try {
+    const tokens = new Lexer(source).tokenize();
+    const tokenHTML = tokens.filter(t => t.type !== 'END').map(t =>
+      `<span class="chip ${chipClass(t.type)}">${t.type}&nbsp;&nbsp;${t.value !== null ? t.value : ''}</span>`
+    ).join('');
+    out.innerHTML += section('Tokens', `<div class="token-flow">${tokenHTML}</div>`);
+
+    const program = new Parser(new Lexer(source)).parseProgram();
+    out.innerHTML += section('AST', `<pre class="ast-pre">${astToString(program).trim()}</pre>`);
+
+    const ev = new Evaluator();
+    const result = ev.evaluate(program);
+    const cards = [...result.entries()].map(([k,v]) =>
+      `<div class="result-card"><div class="result-name">${k}</div><div class="result-value">${formatVal(v)}</div></div>`
+    ).join('');
+    out.innerHTML += section('Results', `<div class="results-grid">${cards}</div>`);
+
+  } catch(e) {
+    out.innerHTML += `<div class="error-box"><div class="error-title">Error</div><div class="error-msg">${e.message}</div></div>`;
+  }
+}
+
+function section(label, bodyHTML) {
+  return `<div class="section"><div class="section-header">${label}</div><div class="section-body">${bodyHTML}</div></div>`;
+}
+
+function clearAll() {
+  document.getElementById('input').value = '';
+  document.getElementById('output').innerHTML = '<div class="empty-state">Run a program to see output</div>';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') runInterpreter();
+});
+</script>
+</body>
+</html>
