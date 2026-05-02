@@ -25,7 +25,7 @@ public class Parser {
                type == Type.MULT ||
                type == Type.DIV;
     }
-        private ASTNode parsePrimary() {
+    private ASTNode parsePrimary() {
         Token token = curr;
 
         if (token.type == Type.NUMBER) {
@@ -63,30 +63,28 @@ public class Parser {
     }
 
     private ASTNode parseStatement() {
-    if (curr.type == Type.VAR) {
-        String name = curr.value;
-        consume(Type.VAR);
+        if (curr.type == Type.VAR) {
+            String name = curr.value;
+            consume(Type.VAR);
 
-    if (curr.type == Type.ASSIGN) {
-        consume(Type.ASSIGN);
-        ASTNode value = parseExpr();
-        return new AssignNode(name, value);
+            if (curr.type == Type.ASSIGN) {
+                consume(Type.ASSIGN);
+                ASTNode value = parseExpr();
+                return new AssignNode(name, value);
+            }
+
+            return parseExprFromNode(new VarNode(name));
+        }
+        return parseExpr();
     }
 
-    return parseExprFromNode(new VarNode(name));
-}
-return parseExpr();
-
-} 
-
-    
     public ProgramNode parseProgram() {
         List<ASTNode> statements = new ArrayList<>();
         while (curr.type != Type.END) {
             statements.add(parseStatement());
-        if(curr.type == Type.SEMICOLON) {
-            consume(Type.SEMICOLON);
-        }
+            if(curr.type == Type.SEMICOLON) {
+                consume(Type.SEMICOLON);
+            }
         }
         return new ProgramNode(statements);
     }
