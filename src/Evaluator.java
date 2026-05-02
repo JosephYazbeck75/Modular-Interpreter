@@ -37,6 +37,7 @@ public class Evaluator {
             AssignNode assign = (AssignNode) node;
             double value = evaluateNode(assign.value);
             variables.put(assign.name, value);
+            System.out.println("Assigned " + assign.name + " = " + value);
             return value;
         }
 

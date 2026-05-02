@@ -1,3 +1,6 @@
+import java.util.ArrayList;
+import java.util.List;
+
 public class Lexer {
     private String text;
     public int pos;
@@ -60,7 +63,6 @@ public class Lexer {
     }
 
     public Token getNextToken() {
-        System.out.println("Current char: [ " + curr + " ]");
         while (curr != '\0') {
             if (Character.isWhitespace(curr)) {
                 skipWhitespace();
@@ -91,5 +93,15 @@ public class Lexer {
             throw new RuntimeException("Unknown character: " + curr);
         }
         return new Token(Type.END, null);
+    }
+
+    public List<Token> tokenize() {
+        List<Token> tokens = new ArrayList<>();
+        Token token;
+        do {
+            token = getNextToken();
+            tokens.add(token);
+        } while (token.type != Type.END);
+        return tokens;
     }
 }
