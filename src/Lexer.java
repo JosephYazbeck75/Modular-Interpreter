@@ -62,6 +62,15 @@ public class Lexer {
             case "mult":  return new Token(Type.MULT, word, startLine, startCol);
             case "div":   return new Token(Type.DIV,  word, startLine, startCol);
             case "print": return new Token(Type.PRINT, word, startLine, startCol);
+            case "if":  return new Token(Type.IF, word, startLine, startCol);
+            case "then": return new Token(Type.THEN, word, startLine, startCol);
+            case "else": return new Token(Type.ELSE, word, startLine, startCol);
+            case "gt": return new Token(Type.GT, word, startLine, startCol);
+            case "lt": return new Token(Type.LT, word, startLine, startCol);
+            case "neq": return new Token(Type.NEQ, word, startLine, startCol);
+            case "eq": return new Token(Type.EQ, word, startLine, startCol);
+            case "gte": return new Token(Type.GTE, word, startLine, startCol);
+            case "lte": return new Token(Type.LTE, word, startLine, startCol);
             default:      return new Token(Type.VAR,  word, startLine, startCol);
         }
     }

@@ -155,6 +155,8 @@
   .chip-ASSIGN  { background: #422006; color: #fcd34d; }
   .chip-PUNCT   { background: #1e293b; color: #475569; }
   .chip PRINT   { background: #1e3a2f; color: #86efac; }
+  .chip-IF, .chip-THEN, .chip-ELSE {background: #1e1b4b; color: #a5b4fc; }
+  .chip-CMP { background: #1e293b; color: #94a3b8}
 
   .ast-pre {
     font-family: 'Courier New', monospace;
@@ -303,6 +305,22 @@
             <span class="chip chip-PRINT">PRINT</span>
             <span class="ref-desc">Print a value &mdash; <code>print a;</code></span>
         </div>
+      <div class="ref-row">
+         <span class="chip chip-IF">IF</span>
+          <span class="ref-desc">Conditional — <code>if a gt b then res = a sub b else res = b;</code></span>
+      </div>
+      <div class="ref-row">
+        <span class="chip chip-CMP">GT / LT</span>
+        <span class="ref-desc">Greater / less than — <code>a gt b</code>, <code>a lt b</code></span>
+      </div>
+      <div class="ref-row">
+        <span class="chip chip-CMP">EQ / NEQ</span>
+        <span class="ref-desc">Equal / not equal — <code>a eq b</code>, <code>a neq b</code></span>
+      </div>
+      <div class="ref-row">
+        <span class="chip chip-CMP">GTE / LTE</span>
+        <span class="ref-desc">Greater or equal / less or equal — <code>a gte b</code>, <code>a lte b</code></span>
+      </div>
       </div>
     </div>
   </div>
@@ -314,8 +332,8 @@
 
 <script>
 const Type = {
-  NUMBER:'NUMBER', VAR:'VAR', ADD:'ADD', MIN:'MIN', MULT:'MULT', DIV:'DIV', PRINt: 'PRINT',
-  ASSIGN:'ASSIGN', LEFTPAR:'LEFTPAR', RIGHTPAR:'RIGHTPAR', SEMICOLON:'SEMICOLON', END:'END'
+  NUMBER:'NUMBER', VAR:'VAR', ADD:'ADD', MIN:'MIN', MULT:'MULT', DIV:'DIV', PRINT: 'PRINT', IF : 'IF', ELSE: 'ELSE' , THEN: 'THEN', EQ: 'EQ', NEQ: "NEQ",
+  GTE:'GTE', GT: 'GT', LT: 'LT', LTE: 'LTE', ASSIGN:'ASSIGN', LEFTPAR:'LEFTPAR', RIGHTPAR:'RIGHTPAR', SEMICOLON:'SEMICOLON', END:'END'
 };
 
 class Token {
@@ -336,7 +354,7 @@ class Lexer {
     while (this.curr !== '\0' && /[a-zA-Z0-9]/.test(this.curr)) { r += this.curr; this.advance(); }
     const w = r.toLowerCase();
     if (!w) throw new Error('Empty identifier');
-    const kw = { add: 'ADD', min: 'MIN',sub: ' MIN', mult: 'MULT', div: 'DIV', print: 'PRINT' };
+    const kw = { add: 'ADD', min: 'MIN',sub:'MIN', mult: 'MULT', div: 'DIV', print: 'PRINT', if: 'IF', else:'ELSE', then:'THEN', gt:'GT', lt:'LT', eq:'EQ', neq:'NEQ', lte:'LTE', gte:'GTE'};
     return new Token(kw[w] || Type.VAR, w);
   }
   getNextToken() {
@@ -366,7 +384,12 @@ class Parser {
     const t = this.curr; this.curr = this.lexer.getNextToken(); return t;
   }
   isOp(type) { return [Type.ADD,Type.MIN,Type.MULT,Type.DIV].includes(type); }
+
   isReserved(type) { return [Type.ADD,Type.MIN,Type.MULT,Type.DIV].includes(type); }
+
+  isReservedWord(type) {
+  return ['ADD','MIN','MULT','DIV','GT','LT','EQ','NEQ','GTE','LTE'].includes(type);
+}
   parsePrimary() {
     const t = this.curr;
     if (t.type === Type.NUMBER) { this.eat(Type.NUMBER); return { kind:'number', value: parseFloat(t.value) }; }
@@ -391,6 +414,23 @@ class Parser {
         this.eat('PRINT');
         return {kind:'print', expr: this.parseExpr()};
     }
+
+    if (this.curr.type == 'IF') {
+      this.eat('IF') 
+      const condition = this.parseCondition();
+      this.eat('THEN');
+      const thenBranch = this.parseStatement();
+      let elseBranch = null;
+      if (this.curr.type == 'ELSE') {
+        this.eat('ELSE');
+        elseBranch = this.parseStatement();
+      }
+      return {kind:'if', condition, thenBranch, elseBranch};
+    }
+
+    if (this.isReservedWord(this.curr.type))
+      throw new Error("'" + this.curr.value + "'is a system symbol, can not be used as variable!");
+
     if (this.curr.type === Type.VAR) {
       const name = this.curr.value; this.eat(Type.VAR);
       if (this.curr.type === Type.ASSIGN) {
@@ -404,6 +444,19 @@ class Parser {
       return this.parseExprFromNode({ kind:'var', name });
     }
     return this.parseExpr();
+  }
+  isComparison(type) {
+    return ['GT','LT','EQ','NEQ','GTE','LTE'].includes(type);
+  }
+  parseCondition() {
+    const left = this.parsePrimary();
+    if (this.isComparison(this.curr.type)) {
+      const op = this.curr.type;
+      this.eat(op);
+      const right = this.parsePrimary();
+      return { kind:'compare', op, left, right};
+    }
+    return left;
   }
   parseProgram() {
     const stmts = [];
@@ -442,8 +495,29 @@ class Evaluator {
     if (node.kind == 'print') {
         const v = this.evalNode(node.expr);
         const out = document.getElementById('output');
-        out.innerHTML += `<div style="color:#86efac; font-size:13px; padding:4px 0;">==> $[formatVal(v)}</div>`;
+        out.innerHTML += `<div style="color:#86efac; font-size:13px; padding:4px 0;">==> ${formatVal(v)}</div>`;
         return v;
+    }
+    if (node.kind === 'compare') {
+      const l = this.evalNode(node.left);
+      const r = this.evalNode(node.right);
+      switch(node.op) {
+    case 'GT':  return l >  r ? 1 : 0;
+    case 'LT':  return l <  r ? 1 : 0;
+    case 'LTE': return l <= r ? 1 : 0;
+    case 'GTE': return l >= r ? 1 : 0;
+    case 'EQ':  return l == r ? 1 : 0;
+    case 'NEQ': return l != r ? 1 : 0;
+      }
+    }
+    if (node.kind == 'if') {
+      const cond = this.evalNode(node.condition);
+      if (cond != 0) {
+        return this.evalNode(node.thenBranch);
+      } else if (node.elseBranch) {
+        return this.evalNode(node.elseBranch) 
+      }
+      return 0;
     }
     throw new Error('Unknown node: ' + node.kind);
   }
@@ -459,13 +533,28 @@ function astToString(node, indent) {
     return pad + 'Assign: ' + node.name + '\n' + astToString(node.value, indent+1);
   }
   if (node.kind == 'print') {
-    return pad + 'Print\n' + astToString(node.expr, ' ' + 1);
+    return pad + 'Print\n' + astToString(node.expr, indent + 1);
   }
   if (node.kind === 'binop') {
     return pad + 'BinOp: ' + node.op + '\n' +
       pad + '  Left:\n'  + astToString(node.left,  indent+2) +
       pad + '  Right:\n' + astToString(node.right, indent+2);
   }
+ if (node.kind === 'compare') {
+  return pad + 'Compare: ' + node.op + '\n' +
+    pad + '  Left:\n'  + astToString(node.left,  indent+2) +
+    pad + '  Right:\n' + astToString(node.right, indent+2);
+}
+
+if (node.kind === 'if') {
+  let s = pad + 'If\n' +
+    pad + '  Condition:\n' + astToString(node.condition,  indent+2) +
+    pad + '  Then:\n'      + astToString(node.thenBranch, indent+2);
+  if (node.elseBranch)
+    s += pad + '  Else:\n' + astToString(node.elseBranch, indent+2);
+  return s;
+}
+
   if (node.kind === 'number') return pad + 'Number: ' + node.value + '\n';
   if (node.kind === 'var')    return pad + 'Var: '    + node.name  + '\n';
   return pad + '?\n';
@@ -477,6 +566,8 @@ function chipClass(type) {
   if (['ADD','MIN','MULT','DIV'].includes(type)) return 'chip-OP';
   if (type === 'ASSIGN') return 'chip-ASSIGN';
   if (type == 'PRINT') return 'chip-PRINT';
+  if (type === 'IF' || type === 'THEN' || type === 'ELSE') return 'chip-IF';
+  if (['GT','LT','LTE','GTE','EQ','NEQ'].includes(type)) return 'chip-CMP';
   return 'chip-PUNCT';
 }
 

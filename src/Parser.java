@@ -12,7 +12,7 @@ public class Parser {
     private Token consume(Type expected) {
         if (curr.type != expected) {
             throw new RuntimeException(
-                "Unrecognized Token!"
+                "Expected " + expected + "but got" + curr.type + "(" + curr.value + ")"
             );
         }
     Token eaten = curr;
@@ -25,6 +25,13 @@ public class Parser {
                type == Type.MULT ||
                type == Type.DIV;
     }
+    private boolean isReservedWord(Type type) {
+    return type == Type.ADD  || type == Type.MIN  ||
+           type == Type.MULT || type == Type.DIV  ||
+           type == Type.GT   || type == Type.LT   ||
+           type == Type.EQ   || type == Type.NEQ  ||
+           type == Type.GTE  || type == Type.LTE;
+}
     private ASTNode parsePrimary() {
         Token token = curr;
 
@@ -60,6 +67,17 @@ public class Parser {
     private ASTNode parseExpr() {
         ASTNode left = parsePrimary();
         return parseExprFromNode(left);
+    
+    }
+    private ASTNode parseCondition() {
+        ASTNode left = parsePrimary();
+        if (IsComparison(curr.type)) {
+            Type op = curr.type;
+            consume(op);
+            ASTNode right = parsePrimary();
+            return new CompareNode(left,op,right);
+        }
+        return left;
     }
 
     private ASTNode parseStatement() {
@@ -68,6 +86,22 @@ public class Parser {
         ASTNode expr = parseExpr();
         return new PrintNode(expr);
     }
+            if (curr.type == Type.IF) {
+            consume(Type.IF);
+            ASTNode condition = parseCondition();
+            consume(Type.THEN);
+            ASTNode thenBranch = parseStatement();
+            ASTNode elseBranch = null;
+            if (curr.type == Type.ELSE) {
+                consume(Type.ELSE);
+                elseBranch = parseStatement();
+            }
+            return new IfNode(condition, thenBranch, elseBranch);
+        }
+        if (isReservedWord(curr.type)) {
+            throw new RuntimeException("Error: " + curr.value + "is a system symbol");
+        }
+
         if (curr.type == Type.VAR) {
             String name = curr.value;
             consume(Type.VAR);
@@ -81,6 +115,9 @@ public class Parser {
             return parseExprFromNode(new VarNode(name));
         }
         return parseExpr();
+    }
+    private boolean IsComparison(Type type) {
+        return type == type.GT || type == type.LT || type == type.EQ || type == Type.NEQ || type == Type.GTE || type == Type.LTE;
     }
 
     public ProgramNode parseProgram() {

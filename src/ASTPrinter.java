@@ -35,8 +35,26 @@ public class ASTPrinter {
             PrintNode print = (PrintNode) node;
             sb.append(indentation).append("Print\n");
             nodeToString(print.expression, indent+ 1, sb);
-
-        } else {
+        } else if (node instanceof CompareNode) {
+            CompareNode cmp = (CompareNode) node;
+            sb.append(indentation).append("Compare: ").append(cmp.op).append("\n");
+            sb.append(indentation).append(" Left:\n");
+            nodeToString(cmp.left, indent + 2, sb);
+            sb.append(indentation).append(" Right:\n");
+            nodeToString(cmp.right, indent + 2, sb);
+        
+        } else if (node instanceof IfNode) {
+            IfNode ifNode = (IfNode) node;
+            sb.append(indentation).append("IF\n");
+             sb.append(indentation).append("  Condition:\n");
+            nodeToString(ifNode.condition,  indent + 2, sb);
+            sb.append(indentation).append("  Then:\n");
+            nodeToString(ifNode.thenBranch, indent + 2, sb);
+                if (ifNode.elseBranch != null) {
+            sb.append(indentation).append("  Else:\n");
+            nodeToString(ifNode.elseBranch, indent + 2, sb);
+                }
+         }else {
             sb.append(indentation).append(node.getClass().getSimpleName()).append("\n");
         }
     }

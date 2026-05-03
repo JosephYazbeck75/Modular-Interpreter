@@ -4,7 +4,6 @@ import java.util.Map;
 public class Evaluator {
     private final Map<String, Double> variables = new LinkedHashMap<>();
 
-    // Evaluate the whole program and return the final variable map
     public Map<String, Double> evaluate(ProgramNode program) {
         for (ASTNode statement : program.statements) {
             evaluateNode(statement);
@@ -12,7 +11,6 @@ public class Evaluator {
         return variables;
     }
 
-    // Evaluate a single AST node and return its numeric value
     private double evaluateNode(ASTNode node) {
         if (node instanceof NumberNode) {
             return ((NumberNode) node).value;
@@ -50,10 +48,20 @@ public class Evaluator {
             return value;
         }
 
+        if (node instanceof IfNode) {
+            IfNode ifNode = (IfNode) node;
+            if (evaluateCondition(ifNode.condition)) {
+                return evaluateNode(ifNode.thenBranch);
+            }
+            else if (ifNode.elseBranch != null) {
+                return evaluateNode(ifNode.elseBranch);
+            }
+            return 0;
+        }
+
         throw new RuntimeException("Unsupported AST node: " + node.getClass().getSimpleName());
     }
 
-    // Compute binary operation values
     private double evaluateBinaryOperation(Type op, double left, double right) {
         switch (op) {
             case ADD:
@@ -70,5 +78,22 @@ public class Evaluator {
             default:
                 throw new RuntimeException("Unknown binary operator: " + op);
         }
+    }
+    private boolean evaluateCondition(ASTNode node) {
+        if (node instanceof CompareNode) {
+            CompareNode cmp = (CompareNode) node;
+            double left = evaluateNode(cmp.left);
+            double right = evaluateNode(cmp.right);
+            switch(cmp.op) {
+                case GT: return left > right;
+                case LT: return left < right;
+                case EQ: return left == right;
+                case NEQ: return left != right;
+                case GTE: return left >= right;
+                case LTE: return left <= right;
+                default: throw new RuntimeException("Unknown comparison: " + cmp.op);
+            }
+        }
+        return evaluateNode(node) != 0;
     }
 }
