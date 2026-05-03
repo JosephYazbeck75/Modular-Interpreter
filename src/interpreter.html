@@ -41,6 +41,7 @@
     grid-template-columns: 1fr 1fr;
     flex: 1;
     gap: 0;
+    height: 100%;
   }
 
   .left-panel {
@@ -57,6 +58,7 @@
     padding: 24px;
     gap: 16px;
     overflow-y: auto;
+    min-height: 100vh;
   }
 
   .panel-label {
@@ -156,6 +158,8 @@
   .chip-PUNCT   { background: #1e293b; color: #475569; }
   .chip PRINT   { background: #1e3a2f; color: #86efac; }
   .chip-IF, .chip-THEN, .chip-ELSE {background: #1e1b4b; color: #a5b4fc; }
+  .chip-While, .chip-DO { background: #1a2744; color: #7dd3fc; }
+  .chip-FOR, .chip-TO { background: #1a3a2a; color: #6ee7b7; }
   .chip-CMP { background: #1e293b; color: #94a3b8}
 
   .ast-pre {
@@ -321,9 +325,17 @@
         <span class="chip chip-CMP">GTE / LTE</span>
         <span class="ref-desc">Greater or equal / less or equal — <code>a gte b</code>, <code>a lte b</code></span>
       </div>
+      <div class="ref row">
+        <span class="chip chip-WHILE">WHILE</span>
+        <span class=""ref-desc">Loop-<code> while i lt 5 do i = i add 1; </code></span>
+      </div>
+      <div class="ref row">
+        <span class="chip chip-FOR">FOR</span>
+        <span class="ref-desc">Counted loop - <code>for i = 1 to 5 do sum = sum add i; </code></span>
       </div>
     </div>
   </div>
+</div>
 
   <div class="right-panel" id="output">
     <div class="empty-state">Run a program to see output</div>
@@ -332,8 +344,8 @@
 
 <script>
 const Type = {
-  NUMBER:'NUMBER', VAR:'VAR', ADD:'ADD', MIN:'MIN', MULT:'MULT', DIV:'DIV', PRINT: 'PRINT', IF : 'IF', ELSE: 'ELSE' , THEN: 'THEN', EQ: 'EQ', NEQ: "NEQ",
-  GTE:'GTE', GT: 'GT', LT: 'LT', LTE: 'LTE', ASSIGN:'ASSIGN', LEFTPAR:'LEFTPAR', RIGHTPAR:'RIGHTPAR', SEMICOLON:'SEMICOLON', END:'END'
+  NUMBER:'NUMBER', VAR:'VAR', ADD:'ADD', MIN:'MIN', MULT:'MULT', DIV:'DIV', PRINT: 'PRINT', IF : 'IF', ELSE: 'ELSE' , THEN: 'THEN', EQ: 'EQ', NEQ: "NEQ", 
+  GTE:'GTE', GT: 'GT', LT: 'LT', LTE: 'LTE', ASSIGN:'ASSIGN', LEFTPAR:'LEFTPAR', RIGHTPAR:'RIGHTPAR', SEMICOLON:'SEMICOLON', WHILE: 'WHILE', DO: 'DO',FOR:'FOR', TO:'TO', END:'END'
 };
 
 class Token {
@@ -354,7 +366,7 @@ class Lexer {
     while (this.curr !== '\0' && /[a-zA-Z0-9]/.test(this.curr)) { r += this.curr; this.advance(); }
     const w = r.toLowerCase();
     if (!w) throw new Error('Empty identifier');
-    const kw = { add: 'ADD', min: 'MIN',sub:'MIN', mult: 'MULT', div: 'DIV', print: 'PRINT', if: 'IF', else:'ELSE', then:'THEN', gt:'GT', lt:'LT', eq:'EQ', neq:'NEQ', lte:'LTE', gte:'GTE'};
+    const kw = { add: 'ADD', min: 'MIN',sub:'MIN', mult: 'MULT', div: 'DIV', print: 'PRINT', if: 'IF', else:'ELSE', then:'THEN', gt:'GT', lt:'LT', eq:'EQ', neq:'NEQ', lte:'LTE', gte:'GTE', while:'WHILE',do:'DO', for:'FOR',to:'TO'};
     return new Token(kw[w] || Type.VAR, w);
   }
   getNextToken() {
@@ -388,7 +400,7 @@ class Parser {
   isReserved(type) { return [Type.ADD,Type.MIN,Type.MULT,Type.DIV].includes(type); }
 
   isReservedWord(type) {
-  return ['ADD','MIN','MULT','DIV','GT','LT','EQ','NEQ','GTE','LTE'].includes(type);
+  return ['ADD','MIN','MULT','DIV','GT','LT','EQ','NEQ','GTE','LTE', 'WHILE','DO','FOR','TO'].includes(type);
 }
   parsePrimary() {
     const t = this.curr;
@@ -426,6 +438,25 @@ class Parser {
         elseBranch = this.parseStatement();
       }
       return {kind:'if', condition, thenBranch, elseBranch};
+    }
+    if (this.curr.type == 'WHILE') {
+      this.eat('WHILE');
+      const condition = this.parseCondition();
+      this.eat('DO');
+      const body = this.parseStatement();
+      return { kind:'while', condition, body};
+    }
+    if (this.curr.type === 'FOR') {
+      this.eat('FOR');
+      const varName = this.curr.value;
+      this.eat('VAR');
+      this.eat('ASSIGN');
+      const start = this.parsePrimary();
+      this.eat('TO');
+      const end = this.parsePrimary();
+      this.eat('DO');
+      const body = this.parseStatement();
+      return {kind:'for', varName, start, end, body};
     }
 
     if (this.isReservedWord(this.curr.type))
@@ -494,8 +525,7 @@ class Evaluator {
     }
     if (node.kind == 'print') {
         const v = this.evalNode(node.expr);
-        const out = document.getElementById('output');
-        out.innerHTML += `<div style="color:#86efac; font-size:13px; padding:4px 0;">==> ${formatVal(v)}</div>`;
+       if (this.onPrint) this.onPrint(formatVal(v));
         return v;
     }
     if (node.kind === 'compare') {
@@ -516,6 +546,34 @@ class Evaluator {
         return this.evalNode(node.thenBranch);
       } else if (node.elseBranch) {
         return this.evalNode(node.elseBranch) 
+      }
+      return 0;
+    }
+    if (node.kind == 'while') {
+      let limit = 999999;
+      let count = 0;
+      while (this.evalNode(node.condition) != 0) {
+        if (++count > limit) {
+          throw new Error('Infinite loop detected - went past' + limit + ' iterations');
+        }
+        this.evalNode(node.body);
+      }
+      return 0;
+    }
+    if (node.kind === 'for') {
+      const start = this.evalNode(node.start);
+      const end = this.evalNode(node.end);
+      let limit = 99999;
+      let count = 0;
+      
+      this.vars.set(node.varName, start);
+
+      while (this.vars.get(node.varName) <= end) {
+        if (++count > limit) {
+          throw new Error('Infinite loop detected - exceeded ' + limit + ' iterations');
+        }
+        this.evalNode(node.body);
+        this.vars.set(node.varName, this.vars.get(node.varName) + 1);
       }
       return 0;
     }
@@ -554,6 +612,17 @@ if (node.kind === 'if') {
     s += pad + '  Else:\n' + astToString(node.elseBranch, indent+2);
   return s;
 }
+if (node.kind == 'while') {
+  return pad + 'While\n' +
+  pad + 'Condition:\n ' + astToString(node.condition, indent+2) +
+  pad + ' Body:\n ' + astToString(node.body, indent+2);
+}
+if (node.kind == 'for') {
+  return pad + 'For : ' + node.varName + '\n' +
+  pad + '  Start:\n' + astToString(node.start, indent+2) +
+  pad + '  End:\n'   + astToString(node.end,   indent+2) +
+  pad + '  Body:\n'  + astToString(node.body,  indent+2);
+}
 
   if (node.kind === 'number') return pad + 'Number: ' + node.value + '\n';
   if (node.kind === 'var')    return pad + 'Var: '    + node.name  + '\n';
@@ -565,8 +634,10 @@ function chipClass(type) {
   if (type === 'VAR')    return 'chip-VAR';
   if (['ADD','MIN','MULT','DIV'].includes(type)) return 'chip-OP';
   if (type === 'ASSIGN') return 'chip-ASSIGN';
-  if (type == 'PRINT') return 'chip-PRINT';
+  if (type === 'PRINT') return 'chip-PRINT';
   if (type === 'IF' || type === 'THEN' || type === 'ELSE') return 'chip-IF';
+  if (type === 'WHILE' || type === 'DO') return 'chip-WHILE';
+  if (type === 'FOR' || type === 'TO') return 'chip-FOR';
   if (['GT','LT','LTE','GTE','EQ','NEQ'].includes(type)) return 'chip-CMP';
   return 'chip-PUNCT';
 }
@@ -591,8 +662,18 @@ function runInterpreter() {
     const program = new Parser(new Lexer(source)).parseProgram();
     out.innerHTML += section('AST', `<pre class="ast-pre">${astToString(program).trim()}</pre>`);
 
+     const printOutputs = [];
     const ev = new Evaluator();
+    ev.onPrint = (val) => printOutputs.push(val);
     const result = ev.evaluate(program);
+
+    if (printOutputs.length > 0) {
+      const printHTML = printOutputs.map(v =>
+        `<div style="color:#86efac; font-size:13px; padding:2px 0;">==> ${v}</div>`
+      ).join('');
+      out.innerHTML += section('Print Output', printHTML);
+    }
+
     const cards = [...result.entries()].map(([k,v]) =>
       `<div class="result-card"><div class="result-name">${k}</div><div class="result-value">${formatVal(v)}</div></div>`
     ).join('');

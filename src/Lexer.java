@@ -71,6 +71,10 @@ public class Lexer {
             case "eq": return new Token(Type.EQ, word, startLine, startCol);
             case "gte": return new Token(Type.GTE, word, startLine, startCol);
             case "lte": return new Token(Type.LTE, word, startLine, startCol);
+            case "while": return new Token(Type.WHILE, word, startLine, startCol);
+            case "do": return new Token(Type.DO, word, startLine, startCol);
+            case "for":return new Token(Type.FOR, word, startLine, startCol);
+            case "to":return new Token(Type.TO, word, startLine, startCol);
             default:      return new Token(Type.VAR,  word, startLine, startCol);
         }
     }

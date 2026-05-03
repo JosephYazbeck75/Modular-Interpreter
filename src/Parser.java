@@ -30,7 +30,9 @@ public class Parser {
            type == Type.MULT || type == Type.DIV  ||
            type == Type.GT   || type == Type.LT   ||
            type == Type.EQ   || type == Type.NEQ  ||
-           type == Type.GTE  || type == Type.LTE;
+           type == Type.GTE  || type == Type.WHILE||
+           type == Type.DO   || type == Type.FOR  ||
+           type == Type.TO   || type == Type.LTE;
 }
     private ASTNode parsePrimary() {
         Token token = curr;
@@ -98,6 +100,25 @@ public class Parser {
             }
             return new IfNode(condition, thenBranch, elseBranch);
         }
+            if (curr.type == Type.WHILE) {
+                consume(Type.WHILE);
+                ASTNode condition = parseCondition();
+                consume(Type.DO);
+                ASTNode body = parseStatement();
+                return new WhileNode(condition,body);
+            }
+            if (curr.type == Type.FOR) {
+                consume(Type.FOR);
+                String varName = curr.value;
+                consume(Type.VAR);
+                consume(Type.ASSIGN);
+                ASTNode start = parsePrimary();
+                consume(Type.TO);
+                ASTNode end = parsePrimary();
+                consume(Type.DO);
+                ASTNode body = parseStatement();
+                return new ForNode(varName,start,end,body);
+            }
         if (isReservedWord(curr.type)) {
             throw new RuntimeException("Error: " + curr.value + "is a system symbol");
         }

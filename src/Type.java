@@ -18,5 +18,9 @@ public enum Type {
     NEQ, 
     GTE, 
     LTE,
+    WHILE,
+    DO,
+    FOR,
+    TO,
     END
 } 

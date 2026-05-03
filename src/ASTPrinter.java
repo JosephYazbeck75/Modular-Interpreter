@@ -54,7 +54,23 @@ public class ASTPrinter {
             sb.append(indentation).append("  Else:\n");
             nodeToString(ifNode.elseBranch, indent + 2, sb);
                 }
-         }else {
+        } else if (node instanceof WhileNode) {
+            WhileNode whileNode = (WhileNode) node;
+            sb.append(indentation).append("While\n");
+            sb.append(indentation).append(" Condition: \n");
+            nodeToString(whileNode.condition, indent + 2, sb);
+            sb.append(indentation).append(" Body:\n");
+            nodeToString(whileNode.body, indent + 2, sb);
+        } else if (node instanceof ForNode) {
+            ForNode forNode = (ForNode) node;
+            sb.append(indentation).append("For; ").append(forNode.var).append("\n");
+            sb.append(indentation).append(" Start:\n");
+            nodeToString(forNode.start, indent + 2, sb);
+            sb.append(indentation).append("  End:\n");
+            nodeToString(forNode.end,   indent + 2, sb);
+            sb.append(indentation).append("  Body:\n");
+            nodeToString(forNode.body,  indent + 2, sb);
+        } else {
             sb.append(indentation).append(node.getClass().getSimpleName()).append("\n");
         }
     }

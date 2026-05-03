@@ -58,6 +58,36 @@ public class Evaluator {
             }
             return 0;
         }
+        if (node instanceof WhileNode) {
+            WhileNode whileNode = (WhileNode) node;
+            int limit = 10000;
+            int count = 0;
+            while(evaluateCondition(whileNode.condition)) {
+                if (++count > limit) {
+                    throw new RuntimeException("Infinite loop detected - went past " + limit + " repetitions");
+                }
+                evaluateNode(whileNode.body);
+            }
+            return 0;
+        }
+        if (node instanceof ForNode) {
+            ForNode forNode = (ForNode) node;
+            double start = evaluateNode(forNode.start);
+            double end = evaluateNode(forNode.end);
+            int limit = 999999;
+            int count = 0;
+
+            variables.put(forNode.var,start);
+
+            while (variables.get(forNode.var) <= end) {
+                if (++count > limit) {
+                    throw new RuntimeException("Infinite loop detected - exceeded " + limit + " iterations");
+                }
+                evaluateNode(forNode.body);
+                variables.put(forNode.var, variables.get(forNode.var) + 1);
+            }
+            return 0;
+        }
 
         throw new RuntimeException("Unsupported AST node: " + node.getClass().getSimpleName());
     }
