@@ -1,4 +1,4 @@
-// Node for variables (i.e a,e,b,x)
+
 public class VarNode extends ASTNode {
         public final String name;
 

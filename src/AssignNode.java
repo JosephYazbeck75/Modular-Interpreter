@@ -1,4 +1,4 @@
-// Node for Assgin (a =)
+
 public class AssignNode extends ASTNode{
     public final String name;
     public final ASTNode value;

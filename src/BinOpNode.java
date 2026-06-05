@@ -1,4 +1,4 @@
-// BinOp short for Binary Operations: holds binary operations (left,right), etc
+
 public class BinOpNode extends ASTNode {
     public final Type op;
     public final ASTNode left;

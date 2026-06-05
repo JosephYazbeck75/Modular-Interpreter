@@ -62,7 +62,6 @@ public static void main(String[] args) throws Exception {
 
 private static void runSource(String source) {
     try {
-        // Tokens
         Lexer lexer = new Lexer(source);
         List<Token> tokens = lexer.tokenize();
         System.out.println("\nTokens:");
